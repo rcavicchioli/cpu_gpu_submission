@@ -1,0 +1,139 @@
+/*
+Copyright © 2019
+Roberto Cavicchioli, Nicola Capodieci
+
+See LICENSE.txt
+*/
+
+#version 450
+
+#define TYPE float
+
+#define KERNEL_RADIUS 1 //3*3
+//#define KERNEL_RADIUS 2 //5*5
+//#define KERNEL_RADIUS 3 //7*7
+
+#define KERNEL_SIZE (KERNEL_RADIUS*2+1)
+
+ layout(local_size_x_id = 1) in;                
+ layout(local_size_y_id = 2) in;
+ layout(local_size_z_id = 3) in;
+
+ layout(push_constant) uniform PushConsts {
+	int dataW;
+    int dataH;
+} pushConsts;
+
+layout(std430) buffer;
+
+layout(set = 0, binding = 4) buffer Result
+{
+     TYPE elements[];
+}
+d_Result;
+
+layout(set = 0, binding = 5) buffer Data
+{
+    TYPE elements[];
+}
+d_Data;
+
+layout(set = 0, binding = 6)  readonly buffer Filter
+{
+	TYPE elements[];
+} d_Filter;
+
+void main()
+{
+    const int gLocX = int(gl_LocalInvocationID.x + gl_WorkGroupID.x * gl_WorkGroupSize.x); 
+    const int gLocY = int(gl_LocalInvocationID.y + gl_WorkGroupID.y * gl_WorkGroupSize.y); 
+    TYPE sum = 0;
+    TYPE value = 0;
+    for (int i = 0; i < KERNEL_SIZE; i++)
+        for (int j = 0; j < KERNEL_SIZE; j++)
+        {
+            if ((gLocX-1+i)<0)
+                value = 0;
+            else
+            if ((gLocX-1+i)>=pushConsts.dataW)
+                value = 0;
+            else
+            {
+                if ((gLocY-1+j)<0)
+                    value = 0;    
+                else
+                if ((gLocY-1+j)>=pushConsts.dataH)
+                    value = 0;
+                else
+                    value = d_Data.elements[(gLocY-1+j)*pushConsts.dataW+(gLocX-1+i)];            
+            }           
+
+            sum+=value*d_Filter.elements[i + KERNEL_SIZE * j];
+        }
+
+    d_Result.elements[gLocX*pushConsts.dataW+gLocY]= sum;
+}
+  
+
+/*
+__global__ void convolutionGPU2(TYPE *d_Result, TYPE *d_Data, TYPE *d_Filter, int dataW, int dataH )
+{
+    const int gLocX = threadIdx.x + blockIdx.x * blockDim.x; 
+    const int gLocY = threadIdx.y + blockIdx.y * blockDim.y;
+    TYPE sum = 0;
+    TYPE value = 0;
+    for (int i = -KERNEL_RADIUS; i <= KERNEL_RADIUS; i++)
+        for (int j = -KERNEL_RADIUS; j <= KERNEL_RADIUS; j++)
+        {
+            if ((gLocX+i>=0 && gLocX+i<dataW) && (gLocY+j>=0 && gLocY+j<dataH))
+                value = d_Data[(gLocX+i)*dataW+gLocY+j];
+            else
+                value = 0;
+
+            sum+=value*dFilter[(i+KERNEL_RADIUS)*KERNEL_SIZE + (j+KERNEL_RADIUS)];
+        }
+    d_Result[gLocX*dataW+gLocY]= sum;
+}
+
+
+
+
+
+__global__ void convolutionGPU(TYPE *d_Result, TYPE *d_Data, TYPE *d_Filter, int dataW, int dataH )
+{
+//////////////////////////////////////////////////////////////////////
+// most slowest way to compute convolution
+//////////////////////////////////////////////////////////////////////
+
+// global mem address for this thread
+const int gLoc = threadIdx.x + blockIdx.x * blockDim.x + threadIdx.y * dataW + blockIdx.y * blockDim.y * dataW; 
+
+TYPE sum = 0;
+TYPE value = 0;
+for (int i = -KERNEL_RADIUS; i <= KERNEL_RADIUS; i++)	// row wise
+    for (int j = -KERNEL_RADIUS; j <= KERNEL_RADIUS; j++)	// col wise
+    {
+        // check row first
+        if (blockIdx.x == 0 && (threadIdx.x + i) < 0)	// left apron
+            value = 0;
+        else if ( blockIdx.x == (gridDim.x - 1) && 
+                    (threadIdx.x + i) > blockDim.x-1 )	// right apron
+            value = 0;
+        else 
+        { 
+            // check col next
+            if (blockIdx.y == 0 && (threadIdx.y + j) < 0)	// top apron
+                value = 0;
+            else 
+                if ( blockIdx.y == (gridDim.y - 1) && 
+                    (threadIdx.y + j) > blockDim.y-1 )	// bottom apron
+                value = 0;
+            else	// safe case
+                value = d_Data[gLoc + i + j * dataW];
+        } 
+        sum += value * d_Filter[KERNEL_RADIUS + i] * d_Filter[KERNEL_RADIUS + j];
+    }
+    d_Result[gLoc] = sum; 
+}
+
+*/

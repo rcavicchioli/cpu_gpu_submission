@@ -1,0 +1,71 @@
+/*
+Copyright © 2019
+Roberto Cavicchioli, Nicola Capodieci
+
+See LICENSE.txt
+*/
+
+#version 450
+
+#define TYPE float
+
+#define ACT_RELU 0
+#define ACT_SIGMOID 1
+
+//#define VK_INSHADER_VALIDATION
+
+ layout(local_size_x_id = 1) in;                
+ layout(local_size_y_id = 2) in;
+ layout(local_size_z_id = 3) in;
+
+ layout(push_constant) uniform PushConsts {
+	int dataW;
+    int dataH;
+    int funct;
+} pushConsts;
+
+layout(std430) buffer;
+
+layout(set = 0, binding = 4) buffer Result
+{
+     TYPE elements[];
+}
+d_Result;
+
+layout(set = 0, binding = 5) buffer Data
+{
+    TYPE elements[];
+}
+d_Data;
+
+void main()
+{
+    const uint gLoc = gl_LocalInvocationID.x + gl_WorkGroupID.x * gl_WorkGroupSize.x + 
+        gl_LocalInvocationID.y * pushConsts.dataW + gl_WorkGroupID.y * gl_WorkGroupSize.y * pushConsts.dataW; 
+
+	if(pushConsts.funct == ACT_RELU)
+        d_Result.elements[gLoc] = (d_Data.elements[gLoc]>0.0) ? d_Data.elements[gLoc] : 0.0;
+    else
+        d_Result.elements[gLoc] = TYPE( float(1.0) / (float(1.0) + exp(float(d_Data.elements[gLoc]))) );
+
+#ifdef VK_INSHADER_VALIDATION
+    //if(gLoc==0){
+        d_Result.elements[0] = TYPE(gl_WorkGroupSize.x);
+        d_Result.elements[1] = TYPE(gl_WorkGroupSize.y);
+        d_Result.elements[2] = TYPE(pushConsts.dataW);
+        d_Result.elements[3] = TYPE(pushConsts.dataH);
+        d_Result.elements[4] = TYPE(pushConsts.funct);
+   // }
+#endif
+}
+
+/*
+__global__ void activationGPU(TYPE *d_Result, TYPE *d_Data, int dataW, int dataH, int funct)
+{
+    const int gLoc = threadIdx.x + blockIdx.x * blockDim.x + threadIdx.y * dataW + blockIdx.y * blockDim.y * dataW; 
+    if (funct == ACT_RELU)
+        d_Result[gLoc] = (d_Data[gLoc]>0.0)?d_Data[gLoc]:0.0;
+    else
+        d_Result[gLoc] = 1.0 / (1.0 + __expf((float)d_Data[gLoc]));
+}
+*/

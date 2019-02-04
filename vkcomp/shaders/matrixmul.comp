@@ -1,0 +1,70 @@
+/*
+Copyright © 2019
+Roberto Cavicchioli, Nicola Capodieci
+
+See LICENSE.txt
+*/
+
+#version 450
+
+#define TYPE float
+
+ layout(local_size_x_id = 1) in;                
+ layout(local_size_y_id = 2) in;
+ layout(local_size_z_id = 3) in;
+
+ layout(push_constant) uniform PushConsts {
+	int dataW;
+	int dataH;
+} pushConsts;
+
+layout(std430) buffer;
+
+layout(set = 0, binding = 4) buffer Result
+{
+     TYPE elements[];
+}
+d_Result;
+
+layout(set = 0, binding = 5) buffer Data
+{
+    TYPE elements[];
+}
+d_Data;
+
+layout(set = 0, binding = 6)  readonly buffer Weights
+{
+	TYPE elements[];
+} d_Weights;
+
+void main()
+{
+	uint row = gl_WorkGroupID.y * gl_WorkGroupSize.y +  gl_LocalInvocationID.y; //blockIdx.y * blockDim.y + threadIdx.y;
+	uint col = gl_WorkGroupID.x * gl_WorkGroupSize.x +  gl_LocalInvocationID.x; //blockIdx.x * blockDim.x + threadIdx.x;
+
+	if(row < pushConsts.dataW && col < pushConsts.dataH){ //if (row < dataW && col < dataH) {
+		TYPE sum = 0; // TYPE sum = 0;
+		for(int ii=0; ii<pushConsts.dataW; ii++){ //for (int ii = 0; ii < dataW; ii++) {
+			sum += d_Data.elements[row * pushConsts.dataW + ii] * d_Weights.elements[ii*pushConsts.dataH + col]; //sum += d_Data[row * dataW + ii] * d_Weights[ii * dataH + col];
+		}
+		d_Result.elements[row*pushConsts.dataW + col] = sum; //d_Result[row * dataW + col] = sum;
+	}
+
+}
+
+
+/*
+__global__ void matrixMulGPU(TYPE *d_Result, TYPE *d_Data, TYPE *d_Weights, int dataW, int dataH )
+{
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < dataW && col < dataH) {
+        TYPE sum = 0;
+        for (int ii = 0; ii < dataW; ii++) {
+            sum += d_Data[row * dataW + ii] * d_Weights[ii * dataH + col];
+        }
+    d_Result[row * dataW + col] = sum;
+  }
+
+}
+*/
