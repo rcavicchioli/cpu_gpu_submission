@@ -68,13 +68,22 @@ __global__ void matrixMulGPU(TYPE *d_Result, TYPE *d_Data, TYPE *d_Weights, int 
 __global__ void dynParKernel(TYPE *dIn, 
     TYPE *dOut, 
     TYPE *dWeights, 
-    TYPE *dFilter, int funct)
+    TYPE *dFilter, int iterations)
 {
     dim3 threadDim(TILE_WIDTH,TILE_WIDTH); 
     dim3 dimGrid(ceil(((float)INW) / threadDim.x),
                 ceil(((float)INH) / threadDim.y));
     
-	matrixMulGPU<<<dimGrid, threadDim, 0>>>(dIn,dOut,dWeights,INW,INH);
-	convolutionGPU<<<dimGrid, threadDim, 0>>>(dOut,dIn,dFilter,OUTW,OUTH);
-	activationGPU<<<dimGrid, threadDim, 0>>>(dIn, dOut, INW, INH, funct);
+    for (int i=0; i<iterations; i++)
+    {
+        if((i%2)==0){
+			matrixMulGPU<<<dimGrid, threadDim, 0>>>(dIn,dOut,dWeights,INW,INH); 
+			convolutionGPU<<<dimGrid, threadDim, 0>>>(dOut,dIn,dFilter,OUTW,OUTH);
+			activationGPU<<<dimGrid, threadDim, 0>>>(dIn, dOut, INW, INH, ACT_RELU);
+		}else{
+			matrixMulGPU<<<dimGrid, threadDim, 0>>>(dOut,dIn,dWeights,INW,INH); 
+			convolutionGPU<<<dimGrid, threadDim, 0>>>(dIn,dOut,dFilter,OUTW,OUTH);
+			activationGPU<<<dimGrid, threadDim, 0>>>(dOut, dIn, INW, INH, ACT_SIGMOID);
+		}
+    }
 }

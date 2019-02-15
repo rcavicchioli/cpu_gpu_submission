@@ -205,17 +205,8 @@ switch(method){
 	CUDA_ERR_CHECK(cudaMemcpyAsync(dOut, hOut, sizeof(TYPE)*OUTH*OUTW, cudaMemcpyHostToDevice, stream));
 	CUDA_ERR_CHECK(cudaMemcpyAsync(dWeights, hWeights, sizeof(TYPE)*WH*WW, cudaMemcpyHostToDevice, stream));
 	CUDA_ERR_CHECK(cudaMemcpyAsync(dFilter, hFilter, sizeof(TYPE)*KERNEL_SIZE*KERNEL_SIZE, cudaMemcpyHostToDevice, stream));
-
-	for(int i=0; i<iterations;i++){
-		
-		if((i%2)==0){
-			dynParKernel<<<1,1,0,stream>>>(dIn,dOut, dWeights, dFilter, ACT_RELU); CUDA_KERN_CHECK
-		}
-		else {
-			dynParKernel<<<1,1,0,stream>>>(dOut,dIn, dWeights, dFilter, ACT_SIGMOID); CUDA_KERN_CHECK
-		}
-
-	}
+	
+	dynParKernel<<<1,1,0,stream>>>(dIn,dOut, dWeights, dFilter, iterations); CUDA_KERN_CHECK
 
 	CUDA_ERR_CHECK(cudaMemcpyAsync(hIn, dIn, sizeof(TYPE)*INH*INW, cudaMemcpyDeviceToHost, stream));
 	CUDA_ERR_CHECK(cudaMemcpyAsync(hOut, dOut, sizeof(TYPE)*OUTH*OUTW, cudaMemcpyDeviceToHost, stream));
