@@ -45,5 +45,3 @@ for run in `seq 1 $RUNS`; do
   echo >> $DATAFILE
 done
 exit
-
-echo -n $submission'_'$measurement'_i'$iter'_s'$size > "$DATAROOT".csv
