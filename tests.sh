@@ -6,12 +6,12 @@ SIZES=(1 2 4 8)
 SAMPLES=500
 SAMPLES_2=1000
 
-DATE=`date +%Y-%m-%d_%H:%M:%S`
-baseline_path="results_$DATE/baseline"
-CNP_path="results_$DATE/CNP"
-graph_path="results_$DATE/graph"
-vk_path="results_$DATE/vulkan"
-mkdir "results_$DATE"
+ARTIFACT="artifact"
+baseline_path="results_$ARTIFACT/baseline"
+CNP_path="results_$ARTIFACT/CNP"
+graph_path="results_$ARTIFACT/graph"
+vk_path="results_$ARTIFACT/vulkan"
+mkdir "results_$ARTIFACT"
 mkdir "$baseline_path"
 mkdir "$CNP_path"
 mkdir "$graph_path"
