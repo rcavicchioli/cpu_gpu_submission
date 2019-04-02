@@ -47,5 +47,3 @@ done
 exit
 
 echo -n $submission'_'$measurement'_i'$iter'_s'$size > "$DATAROOT".csv
-
-
